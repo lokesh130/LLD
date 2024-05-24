@@ -30,8 +30,8 @@ int findPivot(vector<int>& arr, int l, int r) {
 void quickSort(vector<int>& arr, int l, int r) {
     if(l < r) {
         int pivotInd = findPivot(arr, l, r);
-        thread leftThread([&]()->void {quickSort(arr, l, pivotInd-1);});
-        thread rightThread([&]()->void {quickSort(arr, pivotInd+1, r);});
+        thread leftThread(quickSort, ref(arr), l, pivotInd-1);
+        thread rightThread(quickSort, ref(arr), pivotInd+1, r);
         leftThread.join(); 
         rightThread.join();
         // quickSort(arr, l, pivotInd-1);
