@@ -1,3 +1,18 @@
+/*
+schedule:
+
+Executes a command after a given delay. A separate thread is created that sleeps for the specified delay and then runs the command.
+scheduleAtFixedRate:
+
+Executes a command at a fixed rate after an initial delay. The function calculates the time taken to execute the command and adjusts the sleep time to maintain a fixed rate.
+scheduleWithFixedDelay:
+
+Executes a command after an initial delay and then with a fixed delay between the termination of one execution and the start of the next.
+stop:
+
+Stops all scheduled tasks by setting the done flag to true.
+*/
+
 #include<bits/stdc++.h> 
 #include<thread> 
 #include<chrono> 
