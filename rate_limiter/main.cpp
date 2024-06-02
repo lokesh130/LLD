@@ -1,75 +1,59 @@
-/* 
-FR
--> Implement Fixed Window Rate Limiter 
--> It should allow N Requests per second (N should be configurable), extra request should get discarded. 
--> Counter should get reset to 0 after 1 sec is done. 
-*/
-
-
 #include<bits/stdc++.h> 
-#include<mutex> 
 #include<thread> 
 #include<chrono> 
+#include<mutex> 
 
 using namespace std; 
 
 
-class RateLimiter {
+class RateLimiter { 
     private: 
+        chrono::system_clock::time_point startTime; 
+        int maxAllowedRequests; 
+        int timeWindowSize;
+        int requestCount; 
         mutex mtx; 
-        static int counter;
-        int maxRequestCount;
-        chrono::system_clock::time_point startTime;
 
-        void reset() { 
-            startTime = chrono::system_clock::now(); 
-            counter = 0;
+        void reset() {
+            startTime = chrono::system_clock::now();
+            requestCount = 0;
         }
 
     public: 
-        RateLimiter(int maxRequest) {
-            startTime = chrono::system_clock::now();
-            maxRequestCount = maxRequest;
+        RateLimiter(int timeWindowSize, int maxAllowedRequests) : timeWindowSize(timeWindowSize), maxAllowedRequests(maxAllowedRequests) { 
+            reset();
         }
 
-        bool allow() { 
-            lock_guard<mutex> lock(mtx);
-            chrono::system_clock::time_point currTime = chrono::system_clock::now(); 
-            int seconds = duration_cast<chrono::seconds>(currTime - startTime).count();
-
-            if(seconds >= 1) {
+        bool allow(int requestId) {
+            lock_guard<mutex> lock(mtx); 
+            int elpasedSeconds = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - startTime).count();
+            if(elpasedSeconds >= timeWindowSize) { 
                 reset();
             }
 
-            if(counter >= maxRequestCount) {
-                cout<<"Not Allowed"<<endl;
+            if(requestCount >= maxAllowedRequests) { 
+                cout<<"Rejected request "<<requestId<<endl;
                 return false;
-            }
-
-            counter++;
-            cout<<"Allowed"<<endl;
-            return true;
+            } 
+            cout<<"Allowing request "<<requestId<<endl;
+            requestCount = requestCount + 1;
+            return true; 
         }
-
-
 };
-
-int RateLimiter::counter = 0;
 
 
 int main() { 
-    RateLimiter rateLimiter(2); 
+    RateLimiter* rateLimiter = new RateLimiter(1, 4); 
+    vector<thread> requestThreads; 
 
-    vector<thread> threads; 
-
-    for(int i=0; i<10; i++) {
-        threads.emplace_back(&RateLimiter::allow, &rateLimiter);
-        this_thread::sleep_for(chrono::milliseconds(200));
+    for(int i=0; i<20; i++) { 
+        requestThreads.emplace_back(&RateLimiter::allow, rateLimiter, i);
+        this_thread::sleep_for(chrono::milliseconds(100));
+    }
+    
+    for(auto& request : requestThreads) {
+        request.join();
     }
 
-    for(int i=0; i<threads.size(); i++) {
-        threads[i].join();
-    }
-
-    return 0;
+    delete rateLimiter;
 }

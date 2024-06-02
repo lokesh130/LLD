@@ -1,62 +1,56 @@
-/* 
-FR: 
--> There are n forks
--> There is n philosophers who
-    -> thinks
-    -> pick two forks in both hands
-    -> eat a bite
-    -> put back two forks 
--> philosophers can't eat if he doesn't get two forks. 
--> philosophers are seated in circular dining table. 
-*/
-
 #include<bits/stdc++.h> 
-#include<mutex> 
 #include<thread> 
+#include<mutex> 
+#include<chrono> 
 
 using namespace std; 
 
-
-class DiningRoom {
+class DiningRoom { 
     private: 
-        vector<mutex> forks; 
-        int philosopherCount;
-    public:
-        DiningRoom(int philosopherCount) : philosopherCount(philosopherCount), forks(philosopherCount) {
-            // forks = vector<mutex>(philosopherCount);
-        }
-
-        void startProcess(int philosopherId) {
-            for(int i=0; i<5; i++) {
-                // think
-                this_thread::sleep_for(chrono::seconds(2));
+        vector<mutex> forks;
+        vector<thread> philosophers;
+        mutex logMtx;
+        int entityCount;
+        
+        void startEatThinkProcess(int philosopherId) { 
+            while(true) {
                 {
-                    lock(forks[philosopherId], forks[(philosopherId + 1)%philosopherCount]); 
-                    lock_guard<mutex> fork1(forks[philosopherId], adopt_lock); 
-                    lock_guard<mutex> fork2(forks[(philosopherId + 1)%philosopherCount], adopt_lock);
-
-                    // eat
-                    cout<<"Philosopher "<<philosopherId<<" is eating.."<<endl;
+                    mutex& fork1 = forks[philosopherId];
+                    mutex& fork2 = forks[(philosopherId + 1)%(int)forks.size()];
+                    lock(fork1, fork2); 
+                    lock_guard<mutex> lock1(fork1, std::adopt_lock);
+                    lock_guard<mutex> lock2(fork2, std::adopt_lock);
                     this_thread::sleep_for(chrono::seconds(1));
+                    lock_guard<mutex> logLock(logMtx);
+                    cout<<"Philosopher "<<philosopherId<<" Eating And Thinking..."<<endl;
                 }
+                this_thread::sleep_for(chrono::seconds(1));
             }
         }
+
+    public:
+        DiningRoom(int entityCount) : forks(entityCount) { 
+            this->entityCount = entityCount;
+        }
+
+        ~DiningRoom() { 
+            for(auto& thread : philosophers) { 
+                thread.join();
+            }
+        }
+
+        void startDining() { 
+             for(int i=0; i<entityCount; i++) {
+                philosophers.emplace_back(&DiningRoom::startEatThinkProcess, this, i);
+             }
+    
+        }
+
 };
 
-
 int main() { 
-
-    DiningRoom diningRoom(5); 
-
-    vector<thread> philosopherThreads; 
-
-    for(int i=0; i<5; i++) {
-        philosopherThreads.emplace_back(&DiningRoom::startProcess, &diningRoom, i);
-    }
-
-    for(auto& thread : philosopherThreads) { 
-        thread.join();
-    }
-
+    DiningRoom* diningRoom = new DiningRoom(5); 
+    diningRoom->startDining();
+    delete diningRoom;
     return 0;
 }
